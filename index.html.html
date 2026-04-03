@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Fail Siasatan</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f0f2f5; --surface:#fff; --surface2:#f8f9fb; --border:#e4e7ed;
+    --text-primary:#1a2332; --text-secondary:#5a6a7e; --text-muted:#9aaabb;
+    --blue:#1e6fe8; --green:#16a34a; --yellow:#d97706; --orange:#ea580c; --red:#dc2626;
+    --shadow-sm:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+    --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.04);
+    --radius:12px; --radius-sm:8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text-primary);font-size:14px;line-height:1.5}
+
+  /* HEADER */
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow-sm)}
+  .hd-left{display:flex;align-items:center;gap:12px}
+  .hd-icon{width:36px;height:36px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:700;font-family:'DM Mono',monospace}
+  .hd-title{font-size:17px;font-weight:600;letter-spacing:-.3px}
+  .hd-right{display:flex;align-items:center;gap:10px}
+  .ts{font-size:11px;color:var(--text-muted);font-family:'DM Mono',monospace}
+  .btn-r{background:var(--surface2);color:var(--text-secondary);border:1px solid var(--border);padding:6px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif}
+  .btn-r:hover{background:var(--border)}
+  .btn-add{background:var(--blue);color:#fff;border:none;padding:7px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif}
+  .btn-add:hover{opacity:.88}
+
+  /* LOADING */
+  .loading-overlay{position:fixed;inset:0;background:rgba(240,242,245,.88);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+  .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-text{font-size:13px;color:var(--text-secondary);font-weight:500}
+
+  /* ALERTS */
+  .err-bar{background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:12px 20px;font-size:13px;display:none;margin:16px 28px 0;border-radius:var(--radius-sm)}
+  .err-bar.show{display:block}
+  .setup-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);padding:20px 24px;margin:16px 28px 0;display:none}
+  .setup-box.show{display:block}
+  .setup-box h3{font-size:14px;font-weight:700;color:#1e40af;margin-bottom:10px}
+  .setup-box ol{padding-left:18px;font-size:13px;color:#1e3a8a;line-height:2.2}
+  .setup-box code{background:#dbeafe;padding:1px 7px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px}
+
+  /* MAIN */
+  .main{padding:24px 28px;max-width:1400px;margin:0 auto}
+
+  /* KPI */
+  .kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:22px}
+  .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow-sm);transition:box-shadow .2s}
+  .kpi-card:hover{box-shadow:var(--shadow-md)}
+  .kpi-lbl{font-size:11.5px;color:var(--text-secondary);font-weight:500;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px}
+  .kpi-val{font-size:32px;font-weight:700;letter-spacing:-1px;line-height:1;color:var(--text-primary)}
+  .kpi-val.blue{color:var(--blue)} .kpi-val.red{color:var(--red)} .kpi-val.green{color:var(--green)} .kpi-val.orange{color:var(--orange)}
+  .kpi-unit{font-size:14px;font-weight:400;color:var(--text-secondary);margin-left:4px}
+  .kpi-sub{font-size:11px;color:var(--text-muted);margin-top:6px}
+
+  /* CHARTS */
+  .chart-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:22px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow-sm)}
+  .card-title{font-size:12.5px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px}
+  .chart-wrap{position:relative;height:180px}
+  .pie-cont{display:flex;gap:16px;align-items:center}
+  .pie-wrap{position:relative;width:160px;height:160px;flex-shrink:0}
+  .pie-leg{flex:1;display:flex;flex-direction:column;gap:8px}
+  .leg-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary)}
+  .leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .leg-val{margin-left:auto;font-weight:600;color:var(--text-primary);font-family:'DM Mono',monospace;font-size:11px}
+
+  /* PANELS */
+  .panel-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:22px}
+  .panel-title{font-size:12.5px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px}
+  .mt{width:100%;border-collapse:collapse;font-size:12.5px}
+  .mt th{text-align:left;color:var(--text-muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:0 8px 8px 0;border-bottom:1px solid var(--border)}
+  .mt td{padding:9px 8px 9px 0;border-bottom:1px solid var(--border);color:var(--text-primary);vertical-align:middle}
+  .mt tr:last-child td{border-bottom:none}
+  .nf{font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text-secondary);white-space:nowrap}
+  .kl{color:var(--blue);font-weight:500;cursor:pointer;font-size:12.5px}
+
+  /* BADGES */
+  .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;font-family:'DM Mono',monospace}
+  .bg-g{background:#dcfce7;color:#15803d} .bg-y{background:#fef9c3;color:#a16207} .bg-o{background:#ffedd5;color:#c2410c} .bg-r{background:#fee2e2;color:#b91c1c}
+  .day-b{display:inline-flex;align-items:center;justify-content:center;min-width:36px;padding:3px 8px;border-radius:6px;font-size:11.5px;font-weight:700;font-family:'DM Mono',monospace}
+
+  /* MAIN TABLE */
+  .full-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden}
+  .fc-header{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .fc-title{font-size:15px;font-weight:600;letter-spacing:-.2px}
+  .tbl-filter{display:flex;gap:8px;flex-wrap:wrap}
+  .fbtn{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+  .fbtn.active,.fbtn:hover{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .main-tbl{width:100%;border-collapse:collapse;font-size:13px}
+  .main-tbl th{text-align:left;padding:11px 16px;font-size:11.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+  .main-tbl th:hover{color:var(--text-primary)}
+  .main-tbl td{padding:12px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
+  .main-tbl tr:last-child td{border-bottom:none}
+  .main-tbl tr:hover td{background:#f5f7ff}
+  .empty-st{text-align:center;padding:40px;color:var(--text-muted);font-size:13px}
+
+  /* MODAL */
+  .modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center}
+  .modal-ov.open{display:flex}
+  .modal{background:#fff;border-radius:var(--radius);padding:28px;width:520px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:mIn .2s ease}
+  @keyframes mIn{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .m-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+  .m-title{font-size:16px;font-weight:700}
+  .m-close{width:28px;height:28px;border:none;background:var(--surface2);border-radius:6px;cursor:pointer;font-size:16px;color:var(--text-secondary);display:flex;align-items:center;justify-content:center}
+  .m-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .mf label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:5px}
+  .mf input,.mf select{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text-primary);background:var(--surface2);outline:none;transition:border-color .15s}
+  .mf input:focus,.mf select:focus{border-color:var(--blue);background:#fff}
+  .m-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+  .btn-sec{padding:8px 18px;border:1px solid var(--border);background:var(--surface2);border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--text-secondary)}
+  .btn-pri{padding:8px 20px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+  .btn-pri:disabled{opacity:.6;cursor:not-allowed}
+
+  @media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(3,1fr)}.chart-row{grid-template-columns:1fr 1fr}.panel-row{grid-template-columns:1fr}}
+  @media(max-width:700px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.chart-row{grid-template-columns:1fr}.main{padding:16px}}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOv">
+  <div class="spinner"></div>
+  <div class="loading-text">Memuatkan data dari SharePoint...</div>
+</div>
+
+<div class="header">
+  <div class="hd-left">
+    <div class="hd-icon">FS</div>
+    <span class="hd-title">Dashboard Fail Siasatan</span>
+  </div>
+  <div class="hd-right">
+    <span class="ts" id="lastUpd">—</span>
+    <button class="btn-r" onclick="loadData()">↻ Refresh</button>
+    <button class="btn-add" onclick="openModal()">+ Tambah Kes</button>
+  </div>
+</div>
+
+<div class="err-bar" id="errBar"></div>
+<div class="setup-box" id="setupBox">
+  <h3>⚙️ Setup SharePoint List Diperlukan</h3>
+  <ol>
+    <li>Pergi ke site kau → klik <strong>+ New → List</strong></li>
+    <li>Namakan list: <code>Fail Siasatan</code></li>
+    <li>Tambah columns berikut (List Settings → Add column):</li>
+    <li><code>NoFail</code> — Single line of text</li>
+    <li><code>PegawaiIO</code> — Single line of text</li>
+    <li><code>StatusKes</code> — Choice → Saringan Awal | Rakaman Percakapan | Analisis | Semakan Laporan | Selesai</li>
+    <li><code>Keutamaan</code> — Choice → Normal | Tinggi</li>
+    <li><code>TarikhBuka</code> — Date and Time</li>
+    <li>Column <code>Title</code> (sedia ada) → guna sebagai <strong>Tajuk Kes</strong></li>
+  </ol>
+</div>
+
+<div class="main">
+  <!-- KPI -->
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-lbl">Jumlah Kes Aktif</div><div class="kpi-val blue" id="kA">—</div><div class="kpi-sub">Semua status aktif</div></div>
+    <div class="kpi-card"><div class="kpi-lbl">Kes Overdue</div><div class="kpi-val red" id="kO">—</div><div class="kpi-sub">Melebihi 50 hari</div></div>
+    <div class="kpi-card"><div class="kpi-lbl">Hampir SLA</div><div class="kpi-val orange" id="kH">—</div><div class="kpi-sub">40–50 hari</div></div>
+    <div class="kpi-card"><div class="kpi-lbl">Siap Dalam &lt;50 Hari</div><div class="kpi-val green" id="kS">—</div><div class="kpi-sub">Dalam kawalan SLA</div></div>
+    <div class="kpi-card"><div class="kpi-lbl">Purata Hari Siasatan</div><div class="kpi-val" id="kP">—</div><div class="kpi-sub">Semua kes aktif</div></div>
+    <div class="kpi-card"><div class="kpi-lbl">Jumlah IO Aktif</div><div class="kpi-val" id="kI">—</div><div class="kpi-sub">Pegawai penyiasat</div></div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="chart-row">
+    <div class="card"><div class="card-title">Aging Kes Siasatan</div><div class="chart-wrap"><canvas id="cAging"></canvas></div></div>
+    <div class="card"><div class="card-title">Status Kes Siasatan</div>
+      <div class="pie-cont"><div class="pie-wrap"><canvas id="cStatus"></canvas></div><div class="pie-leg" id="pieLeg"></div></div>
+    </div>
+    <div class="card"><div class="card-title">Trend Kes Dibuka &amp; Selesai</div><div class="chart-wrap"><canvas id="cTrend"></canvas></div></div>
+  </div>
+
+  <!-- PANELS -->
+  <div class="panel-row">
+    <div class="card"><div class="panel-title">Kes Overdue</div>
+      <table class="mt"><thead><tr><th>No Fail</th><th>Tajuk Kes</th><th>IO</th><th>Hari</th></tr></thead><tbody id="bOverdue"></tbody></table>
+    </div>
+    <div class="card"><div class="panel-title">Hampir Capai SLA</div>
+      <table class="mt"><thead><tr><th>No Fail</th><th>Tajuk Kes</th><th>IO</th><th>Hari</th><th>SLA</th></tr></thead><tbody id="bHampir"></tbody></table>
+    </div>
+    <div class="card"><div class="panel-title">Kes Keutamaan Tinggi</div>
+      <table class="mt"><thead><tr><th>No Fail</th><th>Tajuk Kes</th><th>IO</th><th>Status</th></tr></thead><tbody id="bPriority"></tbody></table>
+    </div>
+  </div>
+
+  <!-- SENARAI -->
+  <div class="full-card">
+    <div class="fc-header">
+      <span class="fc-title">Senarai Fail Siasatan</span>
+      <div class="tbl-filter">
+        <button class="fbtn active" onclick="filterTable('Semua',this)">Semua</button>
+        <button class="fbtn" onclick="filterTable('Saringan Awal',this)">Saringan Awal</button>
+        <button class="fbtn" onclick="filterTable('Rakaman Percakapan',this)">Rakaman</button>
+        <button class="fbtn" onclick="filterTable('Analisis',this)">Analisis</button>
+        <button class="fbtn" onclick="filterTable('Semakan Laporan',this)">Semakan</button>
+        <button class="fbtn" onclick="filterTable('Selesai',this)">Selesai</button>
+      </div>
+    </div>
+    <table class="main-tbl">
+      <thead><tr>
+        <th onclick="sortT('NoFail')">No Fail ↕</th>
+        <th>Tajuk Kes</th>
+        <th onclick="sortT('PegawaiIO')">Pegawai IO ↕</th>
+        <th onclick="sortT('hari')">Hari Berjalan ↕</th>
+        <th>SLA</th>
+        <th>Status Kes</th>
+        <th>Tindakan</th>
+      </tr></thead>
+      <tbody id="bMain"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-ov" id="modalOv" onclick="closeOutside(event)">
+  <div class="modal">
+    <div class="m-hdr"><span class="m-title" id="mTitle">Tambah Kes Baru</span><button class="m-close" onclick="closeModal()">✕</button></div>
+    <div class="m-row">
+      <div class="mf"><label>No Fail</label><input type="text" id="fNF" placeholder="cth: INV-1090"></div>
+      <div class="mf"><label>Tajuk Kes</label><input type="text" id="fTJ" placeholder="Tajuk siasatan..."></div>
+    </div>
+    <div class="m-row">
+      <div class="mf"><label>Pegawai IO</label><input type="text" id="fIO" placeholder="Nama pegawai"></div>
+      <div class="mf"><label>Status Kes</label>
+        <select id="fST"><option>Saringan Awal</option><option>Rakaman Percakapan</option><option>Analisis</option><option>Semakan Laporan</option><option>Selesai</option></select>
+      </div>
+    </div>
+    <div class="m-row">
+      <div class="mf"><label>Keutamaan</label><select id="fPR"><option value="Normal">Normal</option><option value="Tinggi">Tinggi</option></select></div>
+      <div class="mf"><label>Tarikh Buka</label><input type="date" id="fDT"></div>
+    </div>
+    <div class="m-actions">
+      <button class="btn-sec" onclick="closeModal()">Batal</button>
+      <button class="btn-pri" id="saveBtn" onclick="saveKes()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// KONFIGURASI
+// ═══════════════════════════════════════════════════════
+const SITE_URL  = "https://tabunghaji.sharepoint.com/sites/integriti";
+const LIST_NAME = "Fail Siasatan";
+const SLA_LIMIT = 50;
+// ═══════════════════════════════════════════════════════
+
+let DATA=[], editId=null, currentFilter='Semua', sortKey=null, sortDir=1;
+let cA,cS,cT;
+
+const CLRS={'Saringan Awal':'#1e6fe8','Rakaman Percakapan':'#ea580c','Analisis':'#d97706','Semakan Laporan':'#16a34a','Selesai':'#6b7280'};
+const MNTHS=['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogo','Sep','Okt','Nov','Dis'];
+
+function daysSince(ds){if(!ds)return 0;return Math.max(0,Math.floor((new Date()-new Date(ds))/86400000))}
+
+function slaBadge(h){
+  if(h>SLA_LIMIT)return`<span class="badge bg-r">${h}H</span>`;
+  if(h>=40)return`<span class="badge bg-o">${h}H</span>`;
+  if(h>=25)return`<span class="badge bg-y">${h}H</span>`;
+  return`<span class="badge bg-g">${h}H</span>`;
+}
+
+function showErr(msg,setup=false){
+  const e=document.getElementById('errBar');e.textContent='⚠️ '+msg;e.classList.add('show');
+  document.getElementById('setupBox').classList.toggle('show',setup);
+}
+function hideErr(){document.getElementById('errBar').classList.remove('show');document.getElementById('setupBox').classList.remove('show')}
+function loading(v){document.getElementById('loadingOv').style.display=v?'flex':'none'}
+
+// ─── API ────────────────────────────────────────────────
+async function digest(){
+  const r=await fetch(`${SITE_URL}/_api/contextinfo`,{method:'POST',headers:{'Accept':'application/json;odata=verbose'},credentials:'include'});
+  if(!r.ok)throw new Error('Gagal auth');
+  const j=await r.json();return j.d.GetContextWebInformation.FormDigestValue;
+}
+
+async function getEntityType(){
+  const r=await fetch(`${SITE_URL}/_api/web/lists/getbytitle('${encodeURIComponent(LIST_NAME)}')?$select=ListItemEntityTypeFullName`,
+    {headers:{'Accept':'application/json;odata=verbose'},credentials:'include'});
+  const j=await r.json();return j.d.ListItemEntityTypeFullName;
+}
+
+async function loadData(){
+  loading(true);hideErr();
+  try{
+    const url=`${SITE_URL}/_api/web/lists/getbytitle('${encodeURIComponent(LIST_NAME)}')/items`+
+      `?$select=Id,Title,NoFail,PegawaiIO,StatusKes,Keutamaan,TarikhBuka&$top=500&$orderby=Id desc`;
+    const r=await fetch(url,{headers:{'Accept':'application/json;odata=verbose'},credentials:'include'});
+    if(r.status===404){showErr(`List "${LIST_NAME}" tidak dijumpai. Sila setup dahulu.`,true);DATA=[];}
+    else if(!r.ok){throw new Error(`HTTP ${r.status}`);}
+    else{
+      const j=await r.json();
+      DATA=j.d.results.map(x=>({
+        id:x.Id, NoFail:x.NoFail||'', tajuk:x.Title||'',
+        PegawaiIO:x.PegawaiIO||'', status:x.StatusKes||'Saringan Awal',
+        keutamaan:x.Keutamaan||'Normal',
+        tarikh:x.TarikhBuka?x.TarikhBuka.slice(0,10):'',
+        hari:daysSince(x.TarikhBuka),
+      }));
+    }
+    renderAll();
+    document.getElementById('lastUpd').textContent='Dikemaskini: '+new Date().toLocaleTimeString('ms-MY');
+  }catch(e){showErr('Ralat: '+e.message+'. Pastikan kau log masuk SharePoint.');}
+  finally{loading(false);}
+}
+
+async function apiCreate(payload){
+  const [d,et]=await Promise.all([digest(),getEntityType()]);
+  const r=await fetch(`${SITE_URL}/_api/web/lists/getbytitle('${encodeURIComponent(LIST_NAME)}')/items`,{
+    method:'POST',credentials:'include',
+    headers:{'Accept':'application/json;odata=verbose','Content-Type':'application/json;odata=verbose','X-RequestDigest':d},
+    body:JSON.stringify({__metadata:{type:et},...payload})
+  });
+  if(!r.ok){const j=await r.json();throw new Error(j.error?.message?.value||'Gagal simpan')}
+}
+
+async function apiUpdate(id,payload){
+  const [d,et]=await Promise.all([digest(),getEntityType()]);
+  const r=await fetch(`${SITE_URL}/_api/web/lists/getbytitle('${encodeURIComponent(LIST_NAME)}')/items(${id})`,{
+    method:'POST',credentials:'include',
+    headers:{'Accept':'application/json;odata=verbose','Content-Type':'application/json;odata=verbose','X-RequestDigest':d,'IF-MATCH':'*','X-HTTP-Method':'MERGE'},
+    body:JSON.stringify({__metadata:{type:et},...payload})
+  });
+  if(!r.ok&&r.status!==204)throw new Error(`Gagal kemaskini: HTTP ${r.status}`);
+}
+
+async function apiDelete(id){
+  const d=await digest();
+  const r=await fetch(`${SITE_URL}/_api/web/lists/getbytitle('${encodeURIComponent(LIST_NAME)}')/items(${id})`,{
+    method:'POST',credentials:'include',
+    headers:{'Accept':'application/json;odata=verbose','X-RequestDigest':d,'IF-MATCH':'*','X-HTTP-Method':'DELETE'}
+  });
+  if(!r.ok&&r.status!==204)throw new Error(`Gagal padam: HTTP ${r.status}`);
+}
+
+// ─── RENDER ─────────────────────────────────────────────
+function calcKPI(){
+  const ak=DATA.filter(d=>d.status!=='Selesai');
+  const hs=ak.map(d=>d.hari);
+  document.getElementById('kA').textContent=ak.length;
+  document.getElementById('kO').textContent=hs.filter(h=>h>SLA_LIMIT).length;
+  document.getElementById('kH').textContent=hs.filter(h=>h>=40&&h<=SLA_LIMIT).length;
+  const sp=ak.length?Math.round(hs.filter(h=>h<=SLA_LIMIT).length/ak.length*100):0;
+  document.getElementById('kS').innerHTML=`${sp}<span class="kpi-unit">%</span>`;
+  const av=ak.length?Math.round(hs.reduce((a,b)=>a+b,0)/ak.length):0;
+  document.getElementById('kP').innerHTML=`${av}<span class="kpi-unit">Hari</span>`;
+  document.getElementById('kI').textContent=new Set(ak.map(d=>d.PegawaiIO)).size;
+}
+
+function drawCharts(){
+  const ak=DATA.filter(d=>d.status!=='Selesai');
+  const bins=[0,0,0,0];
+  ak.forEach(d=>{if(d.hari<=20)bins[0]++;else if(d.hari<=35)bins[1]++;else if(d.hari<=50)bins[2]++;else bins[3]++;});
+
+  if(cA)cA.destroy();
+  cA=new Chart(document.getElementById('cAging'),{type:'bar',
+    data:{labels:['0–20 Hari','21–35 Hari','36–50 Hari','> 50 Hari'],datasets:[{data:bins,backgroundColor:['#1e6fe8','#d97706','#ea580c','#dc2626'],borderRadius:6,borderSkipped:false}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#f0f2f5'},ticks:{font:{family:'DM Sans',size:11}}},x:{grid:{display:false},ticks:{font:{family:'DM Sans',size:11}}}},responsive:true,maintainAspectRatio:false}
+  });
+
+  const sc={};DATA.forEach(d=>{sc[d.status]=(sc[d.status]||0)+1});
+  const sl=Object.keys(sc),sv=sl.map(l=>sc[l]),scl=sl.map(l=>CLRS[l]||'#9aaabb');
+  if(cS)cS.destroy();
+  cS=new Chart(document.getElementById('cStatus'),{type:'doughnut',
+    data:{labels:sl,datasets:[{data:sv,backgroundColor:scl,borderWidth:2,borderColor:'#fff'}]},
+    options:{plugins:{legend:{display:false}},cutout:'60%',responsive:true,maintainAspectRatio:false}
+  });
+  document.getElementById('pieLeg').innerHTML=sl.map((l,i)=>{
+    const p=DATA.length?Math.round(sv[i]/DATA.length*100):0;
+    return`<div class="leg-item"><span class="leg-dot" style="background:${scl[i]}"></span><span>${l}</span><span class="leg-val">${p}%</span></div>`;
+  }).join('');
+
+  const now=new Date();
+  const last6=Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);return{lbl:MNTHS[d.getMonth()],y:d.getFullYear(),m:d.getMonth()}});
+  const dibuka=last6.map(m=>DATA.filter(d=>{const t=new Date(d.tarikh);return t.getFullYear()===m.y&&t.getMonth()===m.m}).length);
+  const selesai=last6.map(m=>DATA.filter(d=>{const t=new Date(d.tarikh);return d.status==='Selesai'&&t.getFullYear()===m.y&&t.getMonth()===m.m}).length);
+  if(cT)cT.destroy();
+  cT=new Chart(document.getElementById('cTrend'),{type:'line',
+    data:{labels:last6.map(m=>m.lbl),datasets:[
+      {label:'Dibuka',data:dibuka,borderColor:'#1e6fe8',backgroundColor:'rgba(30,111,232,.08)',tension:.3,pointRadius:4,pointBackgroundColor:'#1e6fe8',fill:true},
+      {label:'Selesai',data:selesai,borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.08)',tension:.3,pointRadius:4,pointBackgroundColor:'#16a34a',fill:true},
+    ]},
+    options:{plugins:{legend:{labels:{font:{family:'DM Sans',size:11},boxWidth:10,padding:12}}},scales:{y:{beginAtZero:true,grid:{color:'#f0f2f5'},ticks:{font:{family:'DM Sans',size:11}}},x:{grid:{display:false},ticks:{font:{family:'DM Sans',size:11}}}},responsive:true,maintainAspectRatio:false}
+  });
+}
+
+function renderPanels(){
+  const ak=DATA.filter(d=>d.status!=='Selesai');
+  const ov=[...ak].filter(d=>d.hari>SLA_LIMIT).sort((a,b)=>b.hari-a.hari);
+  document.getElementById('bOverdue').innerHTML=ov.length
+    ?ov.map(d=>`<tr><td><span class="nf">${d.NoFail}</span></td><td><span class="kl">${d.tajuk}</span></td><td>${d.PegawaiIO}</td><td><span class="day-b bg-r">${d.hari}</span></td></tr>`).join('')
+    :'<tr><td colspan="4" class="empty-st">Tiada kes overdue ✓</td></tr>';
+
+  const hp=[...ak].filter(d=>d.hari>=40&&d.hari<=SLA_LIMIT).sort((a,b)=>b.hari-a.hari);
+  document.getElementById('bHampir').innerHTML=hp.length
+    ?hp.map(d=>`<tr><td><span class="nf">${d.NoFail}</span></td><td><span class="kl">${d.tajuk}</span></td><td>${d.PegawaiIO}</td><td style="font-family:'DM Mono',monospace">${d.hari}</td><td>${slaBadge(d.hari)}</td></tr>`).join('')
+    :'<tr><td colspan="5" class="empty-st">Tiada</td></tr>';
+
+  const hi=ak.filter(d=>d.keutamaan==='Tinggi');
+  document.getElementById('bPriority').innerHTML=hi.length
+    ?hi.map(d=>{const c=d.status==='Selesai'?'bg-g':d.status==='Analisis'?'bg-y':'bg-o';return`<tr><td><span class="nf">${d.NoFail}</span></td><td><span class="kl">${d.tajuk}</span></td><td>${d.PegawaiIO}</td><td><span class="badge ${c}">${d.status}</span></td></tr>`}).join('')
+    :'<tr><td colspan="4" class="empty-st">Tiada</td></tr>';
+}
+
+function renderMain(){
+  let rows=[...DATA];
+  if(currentFilter!=='Semua')rows=rows.filter(d=>d.status===currentFilter);
+  if(sortKey)rows.sort((a,b)=>{let av=a[sortKey]||'',bv=b[sortKey]||'';if(typeof av==='string'){av=av.toLowerCase();bv=bv.toLowerCase();}return av>bv?sortDir:av<bv?-sortDir:0});
+  document.getElementById('bMain').innerHTML=rows.length
+    ?rows.map(d=>`<tr>
+        <td><span class="nf">${d.NoFail}</span></td>
+        <td><span class="kl">${d.tajuk}</span></td>
+        <td>${d.PegawaiIO}</td>
+        <td style="font-family:'DM Mono',monospace">${d.hari}</td>
+        <td>${slaBadge(d.hari)}</td>
+        <td style="font-size:12.5px;color:var(--text-secondary)">${d.status}</td>
+        <td>
+          <button onclick="openModal(${d.id})" style="border:1px solid var(--border);background:var(--surface2);padding:4px 10px;border-radius:6px;font-size:11.5px;cursor:pointer;font-family:'DM Sans',sans-serif">Edit</button>
+          <button onclick="delKes(${d.id})" style="border:1px solid #fee2e2;background:#fff5f5;color:#dc2626;padding:4px 10px;border-radius:6px;font-size:11.5px;cursor:pointer;margin-left:4px;font-family:'DM Sans',sans-serif">Padam</button>
+        </td>
+      </tr>`).join('')
+    :'<tr><td colspan="7" class="empty-st">Tiada rekod ditemui</td></tr>';
+}
+
+function filterTable(v,btn){currentFilter=v;document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderMain()}
+function sortT(k){sortDir=sortKey===k?-sortDir:1;sortKey=k;renderMain()}
+
+// ─── MODAL ──────────────────────────────────────────────
+function openModal(id=null){
+  editId=id;
+  document.getElementById('mTitle').textContent=id?'Edit Kes':'Tambah Kes Baru';
+  if(id){const d=DATA.find(x=>x.id===id);document.getElementById('fNF').value=d.NoFail;document.getElementById('fTJ').value=d.tajuk;document.getElementById('fIO').value=d.PegawaiIO;document.getElementById('fST').value=d.status;document.getElementById('fPR').value=d.keutamaan;document.getElementById('fDT').value=d.tarikh;}
+  else{document.getElementById('fNF').value='';document.getElementById('fTJ').value='';document.getElementById('fIO').value='';document.getElementById('fST').value='Saringan Awal';document.getElementById('fPR').value='Normal';document.getElementById('fDT').value=new Date().toISOString().slice(0,10);}
+  document.getElementById('modalOv').classList.add('open');
+}
+function closeModal(){document.getElementById('modalOv').classList.remove('open');editId=null;}
+function closeOutside(e){if(e.target===document.getElementById('modalOv'))closeModal();}
+
+async function delKes(id){
+  if(!confirm('Padam kes ini dari SharePoint?'))return;
+  loading(true);
+  try{await apiDelete(id);await loadData();}
+  catch(e){showErr('Gagal padam: '+e.message);loading(false);}
+}
+
+async function saveKes(){
+  const nf=document.getElementById('fNF').value.trim();
+  const tj=document.getElementById('fTJ').value.trim();
+  const io=document.getElementById('fIO').value.trim();
+  const st=document.getElementById('fST').value;
+  const pr=document.getElementById('fPR').value;
+  const dt=document.getElementById('fDT').value;
+  if(!nf||!tj||!io||!dt){alert('Sila isi semua maklumat.');return;}
+
+  const payload={Title:tj,NoFail:nf,PegawaiIO:io,StatusKes:st,Keutamaan:pr,TarikhBuka:dt};
+  const btn=document.getElementById('saveBtn');btn.disabled=true;btn.textContent='Menyimpan...';
+  try{
+    if(editId)await apiUpdate(editId,payload);else await apiCreate(payload);
+    closeModal();await loadData();
+  }catch(e){alert('Ralat: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='Simpan';}
+}
+
+function renderAll(){calcKPI();drawCharts();renderPanels();renderMain();}
+loadData();
+</script>
+</body>
+</html>
